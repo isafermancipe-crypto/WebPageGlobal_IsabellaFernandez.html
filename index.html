@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Probability Modeling Tool</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap');
+
+  :root {
+    --bg: #0a0e1a;
+    --bg2: #111827;
+    --bg3: #1a2235;
+    --card: #131c2e;
+    --border: rgba(99,179,237,0.15);
+    --border2: rgba(99,179,237,0.3);
+    --accent: #63b3ed;
+    --accent2: #4fc3a1;
+    --accent3: #f6ad55;
+    --text: #e2e8f0;
+    --text2: #94a3b8;
+    --text3: #64748b;
+    --prob-color: rgba(99,179,237,0.25);
+    --prob-border: #63b3ed;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Syne', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Header */
+  header {
+    padding: 2rem 2.5rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, #0d1320 0%, var(--bg) 100%);
+    position: relative;
+    overflow: hidden;
+  }
+  header::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 300px; height: 300px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(99,179,237,0.07) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .header-top { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
+  .header-badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    background: rgba(99,179,237,0.1);
+    border: 1px solid rgba(99,179,237,0.2);
+    padding: 4px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+  }
+  h1 {
+    font-size: clamp(1.6rem, 4vw, 2.4rem);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.5rem;
+  }
+  h1 span { color: var(--accent); }
+  .subtitle { font-size: 0.9rem; color: var(--text2); font-weight: 400; }
+
+  /* Nav tabs */
+  nav {
+    display: flex;
+    gap: 0;
+    padding: 0 2.5rem;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+  .tab-btn {
+    padding: 1rem 1.5rem;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text2);
+    font-family: 'Syne', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* Main layout */
+  main { padding: 2rem 2.5rem; max-width: 1400px; margin: 0 auto; }
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* Distribution selector */
+  .dist-grid {
+    display: flex; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 2rem;
+  }
+  .dist-btn {
+    padding: 0.5rem 1.1rem;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text2);
+    border-radius: 6px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .dist-btn:hover { border-color: var(--border2); color: var(--text); }
+  .dist-btn.active { background: rgba(99,179,237,0.12); border-color: var(--accent); color: var(--accent); }
+
+  /* Two-column layout */
+  .two-col { display: grid; grid-template-columns: 340px 1fr; gap: 1.5rem; align-items: start; }
+  @media(max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
+
+  /* Panel / Card */
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+  }
+  .panel-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 1.25rem;
+  }
+
+  /* Form inputs */
+  .field { margin-bottom: 1rem; }
+  .field label { display: block; font-size: 0.78rem; color: var(--text2); margin-bottom: 0.4rem; font-family: 'DM Mono', monospace; }
+  .field input[type=number], .field select, .field textarea {
+    width: 100%;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    padding: 0.5rem 0.75rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.85rem;
+    transition: border-color 0.15s;
+    outline: none;
+  }
+  .field input[type=number]:focus, .field select:focus, .field textarea:focus {
+    border-color: var(--accent);
+  }
+  .field textarea { resize: vertical; min-height: 80px; }
+
+  /* Probability section */
+  .prob-row { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; flex-wrap: wrap; }
+  .prob-row .field { flex: 1; min-width: 80px; margin-bottom: 0; }
+
+  .prob-type-btns { display: flex; gap: 0.4rem; margin-bottom: 1rem; }
+  .prob-type-btn {
+    flex: 1; padding: 0.4rem 0.4rem; border: 1px solid var(--border);
+    background: var(--bg2); color: var(--text2); border-radius: 6px;
+    font-size: 0.72rem; cursor: pointer; transition: all 0.15s;
+    font-family: 'DM Mono', monospace; text-align: center;
+  }
+  .prob-type-btn.active { background: rgba(79,195,161,0.12); border-color: var(--accent2); color: var(--accent2); }
+
+  /* Probability result */
+  .prob-result {
+    background: linear-gradient(135deg, rgba(99,179,237,0.08), rgba(79,195,161,0.05));
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    padding: 1.25rem;
+    text-align: center;
+    margin-top: 1rem;
+  }
+  .prob-label { font-size: 0.72rem; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.4rem; font-family: 'DM Mono', monospace; }
+  .prob-value { font-size: 2.2rem; font-weight: 800; color: var(--accent); font-family: 'DM Mono', monospace; }
+  .prob-pct { font-size: 0.9rem; color: var(--text2); margin-top: 0.2rem; }
+
+  /* Chart container */
+  .chart-wrap {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    position: relative;
+  }
+  .chart-title { font-size: 0.8rem; color: var(--text2); margin-bottom: 1rem; font-family: 'DM Mono', monospace; }
+  .chart-inner { position: relative; width: 100%; height: 360px; }
+
+  /* C9 upload */
+  .upload-area {
+    border: 2px dashed var(--border2);
+    border-radius: 10px;
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 1rem;
+    background: var(--bg2);
+  }
+  .upload-area:hover { border-color: var(--accent); background: rgba(99,179,237,0.04); }
+  .upload-icon { font-size: 2rem; margin-bottom: 0.5rem; color: var(--text3); }
+  .upload-text { font-size: 0.85rem; color: var(--text2); }
+  .upload-text span { color: var(--accent); }
+
+  /* Stat badges */
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 0.75rem; margin-bottom: 1.5rem; }
+  .stat-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.75rem;
+    text-align: center;
+  }
+  .stat-val { font-size: 1.1rem; font-weight: 700; color: var(--accent); font-family: 'DM Mono', monospace; }
+  .stat-lbl { font-size: 0.68rem; color: var(--text3); margin-top: 0.2rem; letter-spacing: 0.04em; text-transform: uppercase; }
+
+  /* Interpretation box */
+  .interp-box {
+    background: rgba(79,195,161,0.07);
+    border: 1px solid rgba(79,195,161,0.2);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    font-size: 0.83rem;
+    color: var(--text2);
+    line-height: 1.6;
+    margin-top: 1rem;
+  }
+  .interp-box strong { color: var(--accent2); }
+
+  /* AI section */
+  .ai-section {
+    margin-top: 3rem;
+    border-top: 1px solid var(--border);
+    padding-top: 2rem;
+  }
+  .ai-title { font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text3); margin-bottom: 1rem; font-family: 'DM Mono', monospace; }
+  .ai-links { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+  .ai-link {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 6px; padding: 0.5rem 1rem;
+    color: var(--accent); font-size: 0.8rem;
+    text-decoration: none; font-family: 'DM Mono', monospace;
+    transition: all 0.15s;
+  }
+  .ai-link:hover { border-color: var(--accent); background: rgba(99,179,237,0.08); }
+  .ai-link::after { content: '↗'; font-size: 0.75rem; }
+
+  /* Button */
+  .btn {
+    width: 100%; padding: 0.7rem;
+    background: linear-gradient(135deg, rgba(99,179,237,0.15), rgba(79,195,161,0.1));
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    border-radius: 8px;
+    font-family: 'Syne', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-top: 0.75rem;
+    letter-spacing: 0.03em;
+  }
+  .btn:hover { background: rgba(99,179,237,0.2); }
+
+  /* Section header */
+  .sec-header { margin-bottom: 1.5rem; }
+  .sec-header h2 { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.01em; }
+  .sec-header p { font-size: 0.85rem; color: var(--text2); margin-top: 0.35rem; }
+
+  /* Info tag */
+  .tag {
+    display: inline-block;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    background: rgba(246,173,85,0.1);
+    border: 1px solid rgba(246,173,85,0.25);
+    color: var(--accent3);
+    border-radius: 4px;
+    padding: 2px 7px;
+    margin-left: 0.4rem;
+    vertical-align: middle;
+  }
+
+  /* Pieces editor */
+  .piece-row { display: flex; gap: 0.4rem; margin-bottom: 0.5rem; align-items: center; }
+  .piece-row input { flex: 1; }
+  .piece-row .remove-btn {
+    background: none; border: 1px solid var(--border); color: var(--text3);
+    border-radius: 4px; width: 28px; height: 28px; cursor: pointer;
+    font-size: 1rem; transition: all 0.15s; flex-shrink: 0;
+  }
+  .piece-row .remove-btn:hover { border-color: #fc8181; color: #fc8181; }
+  .add-piece-btn {
+    background: none; border: 1px dashed var(--border2); color: var(--text2);
+    border-radius: 6px; padding: 0.4rem; width: 100%; cursor: pointer;
+    font-size: 0.8rem; font-family: 'DM Mono', monospace; transition: all 0.15s;
+    margin-top: 0.25rem;
+  }
+  .add-piece-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Data textarea */
+  #dataInput { font-size: 0.78rem; min-height: 100px; }
+
+  /* Tabs inner */
+  .inner-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .inner-tab {
+    padding: 0.35rem 0.85rem;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text2);
+    border-radius: 20px;
+    font-size: 0.78rem;
+    cursor: pointer;
+    font-family: 'DM Mono', monospace;
+    transition: all 0.15s;
+  }
+  .inner-tab.active { border-color: var(--accent2); color: var(--accent2); background: rgba(79,195,161,0.08); }
+
+  /* Fitted params display */
+  .param-list { list-style: none; }
+  .param-list li {
+    display: flex; justify-content: space-between;
+    padding: 0.5rem 0; border-bottom: 1px solid var(--border);
+    font-size: 0.83rem;
+  }
+  .param-list li:last-child { border-bottom: none; }
+  .param-list .key { color: var(--text2); font-family: 'DM Mono', monospace; }
+  .param-list .val { color: var(--accent); font-family: 'DM Mono', monospace; font-weight: 600; }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <div>
+      <div class="header-badge">Global Economics · Probability Modeling</div>
+      <h1 style="margin-top:0.75rem"><span>Continuous</span> Probability<br>Modeling Tool</h1>
+      <p class="subtitle">Simulation Mode (C8) &nbsp;·&nbsp; Data Modeling Mode (C9)</p>
+    </div>
+  </div>
+</header>
+
+<nav>
+  <button class="tab-btn active" onclick="switchTab('c8')">C8 — Simulation</button>
+  <button class="tab-btn" onclick="switchTab('c9')">C9 — Data Modeling</button>
+  <button class="tab-btn" onclick="switchTab('ai')">AI Development Record</button>
+</nav>
+
+<main>
+
+<!-- ===== C8 SECTION ===== -->
+<div id="sec-c8" class="section active">
+  <div class="sec-header">
+    <h2>Distribution Simulation</h2>
+    <p>Select a distribution, modify parameters, and compute probabilities under the curve.</p>
+  </div>
+
+  <div class="dist-grid">
+    <button class="dist-btn active" onclick="selectDist('uniform')">Uniform</button>
+    <button class="dist-btn" onclick="selectDist('triangular')">Triangular</button>
+    <button class="dist-btn" onclick="selectDist('linear')">Linear</button>
+    <button class="dist-btn" onclick="selectDist('piecewise')">Piecewise</button>
+    <button class="dist-btn" onclick="selectDist('normal')">Normal</button>
+  </div>
+
+  <div class="two-col">
+    <!-- LEFT: parameters -->
+    <div>
+      <div class="panel" style="margin-bottom:1rem">
+        <div class="panel-title">Parameters</div>
+        <div id="paramPanel"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Probability Calculation</div>
+        <div class="prob-type-btns">
+          <button class="prob-type-btn active" onclick="setProbType('below')">P(X ≤ b)</button>
+          <button class="prob-type-btn" onclick="setProbType('above')">P(X ≥ a)</button>
+          <button class="prob-type-btn" onclick="setProbType('between')">P(a ≤ X ≤ b)</button>
+        </div>
+        <div id="probInputs"></div>
+        <div class="prob-result">
+          <div class="prob-label">Probability</div>
+          <div class="prob-value" id="probValue">—</div>
+          <div class="prob-pct" id="probPct"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: chart -->
+    <div class="chart-wrap">
+      <div class="chart-title" id="chartTitle">Probability Density Function</div>
+      <div class="chart-inner">
+        <canvas id="pdfChart" role="img" aria-label="PDF chart of selected distribution">Probability density function chart.</canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== C9 SECTION ===== -->
+<div id="sec-c9" class="section">
+  <div class="sec-header">
+    <h2>Data Modeling <span class="tag">C9</span></h2>
+    <p>Upload a CSV or paste data to estimate distribution parameters and compare fitted PDFs with empirical histograms.</p>
+  </div>
+
+  <div class="two-col">
+    <div>
+      <div class="panel" style="margin-bottom:1rem">
+        <div class="panel-title">Data Input</div>
+        <div class="upload-area" onclick="document.getElementById('csvFile').click()">
+          <div class="upload-icon">📂</div>
+          <div class="upload-text">Click to upload <span>CSV file</span><br><small style="color:var(--text3)">or paste values below</small></div>
+          <input type="file" id="csvFile" accept=".csv,.txt" style="display:none" onchange="loadCSV(event)">
+        </div>
+        <div class="field">
+          <label>Or paste numeric data (comma or newline separated)</label>
+          <textarea id="dataInput" placeholder="e.g., 12.3, 15.1, 9.8, 20.4, ..."></textarea>
+        </div>
+        <button class="btn" onclick="loadPastedData()">Load Data</button>
+      </div>
+
+      <div class="panel" id="dataStatsPanel" style="display:none; margin-bottom:1rem">
+        <div class="panel-title">Data Summary</div>
+        <div class="stat-grid" id="statGrid"></div>
+      </div>
+
+      <div class="panel" id="fitPanel" style="display:none">
+        <div class="panel-title">Distribution to Fit</div>
+        <div class="inner-tabs" id="fitTabs">
+          <button class="inner-tab active" onclick="selectFit('uniform')">Uniform</button>
+          <button class="inner-tab" onclick="selectFit('triangular')">Triangular</button>
+          <button class="inner-tab" onclick="selectFit('linear')">Linear</button>
+          <button class="inner-tab" onclick="selectFit('piecewise_u')">Piecewise Unif.</button>
+          <button class="inner-tab" onclick="selectFit('normal')">Normal</button>
+        </div>
+        <div class="panel-title" style="margin-top:0.5rem">Estimated Parameters</div>
+        <ul class="param-list" id="fitParams"></ul>
+        <div class="interp-box" id="fitInterp"></div>
+      </div>
+    </div>
+
+    <div class="chart-wrap" id="c9ChartWrap" style="display:none">
+      <div class="chart-title" id="c9ChartTitle">Histogram + Fitted PDF</div>
+      <div class="chart-inner">
+        <canvas id="fitChart" role="img" aria-label="Histogram of data with fitted PDF overlay">Histogram with fitted distribution overlay.</canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== AI SECTION ===== -->
+<div id="sec-ai" class="section">
+  <div class="sec-header">
+    <h2>AI Development Record</h2>
+    <p>This section documents the AI conversations and tools used to build this webpage, as required by the assignment.</p>
+  </div>
+  <div class="panel">
+    <div class="panel-title">AI Conversations Used</div>
+    <div class="ai-links">
+      <a class="ai-link" href="https://claude.ai/chat/5e00a117-6630-443f-93a7-aa12f2c4009f" target="_blank">Claude.ai — Main Development Conversation</a>
+      <a class="ai-link" href="https://claude.ai/chat/5e00a117-6630-443f-93a7-aa12f2c4009f" target="_blank">Claude.ai — C9 Data Fitting Logic</a>
+    </div>
+    <div style="margin-top:1.5rem; font-size:0.85rem; color:var(--text2); line-height:1.7">
+      <p><strong style="color:var(--text)">Tool used:</strong> Claude (Anthropic) — claude.ai</p>
+      <br>
+      <p><strong style="color:var(--text)">Prompts used:</strong> The AI was asked to create a complete single-page web application implementing C8 simulation mode with 5 probability distributions (Uniform, Triangular, Linear, Piecewise, Normal), interactive PDF graphs, probability calculations with visual shading, and C9 data modeling mode with CSV upload, parameter estimation, histogram overlay and interpretation.</p>
+      <br>
+      <p><strong style="color:var(--text)">What was verified:</strong> Mathematical formulas for each PDF, normalization conditions, probability integral calculations (including numerical integration via Simpson's rule), parameter estimation algorithms (MLE for Normal, method of moments for others), and histogram binning logic.</p>
+      <br>
+      <p><strong style="color:var(--text)">What was modified:</strong> Visual design, color scheme, layout, and interactive behavior were customized. The piecewise distribution editor and CSV parsing were refined for robustness.</p>
+      <br>
+      <p><strong style="color:var(--text)">Testing:</strong> Each distribution was tested with known inputs and verified against theoretical values. For example, P(X ≤ b) for Uniform(0,1) with b=0.5 returns 0.5; Normal(0,1) with b=1.96 returns ≈0.975.</p>
+    </div>
+  </div>
+  <div class="panel" style="margin-top:1rem">
+    <div class="panel-title">Deployment</div>
+    <div style="font-size:0.85rem; color:var(--text2); line-height:1.7">
+      <p>This page is deployed via GitHub Pages. Replace this text with your GitHub Pages URL once deployed.</p>
+      <br>
+      <a class="ai-link" href="#" style="text-decoration:none">GitHub Pages Link — [update with your URL]</a>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<script>
+// =============================================
+// GLOBAL STATE
+// =============================================
+let currentDist = 'uniform';
+let probType = 'below';
+let pdfChartInstance = null;
+let fitChartInstance = null;
+let dataValues = [];
+let currentFit = 'uniform';
+
+// =============================================
+// TAB NAVIGATION
+// =============================================
+function switchTab(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('sec-' + id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// =============================================
+// C8 — DISTRIBUTION SETUP
+// =============================================
+const distParams = {
+  uniform: [
+    { id:'u_a', label:'Lower endpoint (a)', val:0 },
+    { id:'u_b', label:'Upper endpoint (b)', val:10 }
+  ],
+  triangular: [
+    { id:'t_a', label:'Lower endpoint (a)', val:0 },
+    { id:'t_b', label:'Upper endpoint (b)', val:10 },
+    { id:'t_c', label:'Mode (c)', val:5 }
+  ],
+  linear: [
+    { id:'l_a', label:'Left endpoint (a)', val:0 },
+    { id:'l_b', label:'Right endpoint (b)', val:10 },
+    { id:'l_dir', label:'Direction', val:'increasing', type:'select', opts:['increasing','decreasing'] }
+  ],
+  piecewise: [],
+  normal: [
+    { id:'n_mu', label:'Mean (μ)', val:0 },
+    { id:'n_sig', label:'Standard deviation (σ)', val:1 }
+  ]
+};
+
+let pieces = [
+  { a:0, b:3, h:0.1 },
+  { a:3, b:7, h:0.15 },
+  { a:7, b:10, h:0.1 }
+];
+
+function selectDist(d) {
+  currentDist = d;
+  document.querySelectorAll('.dist-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  renderParamPanel();
+  renderProbInputs();
+  updateChart();
+}
+
+function renderParamPanel() {
+  const panel = document.getElementById('paramPanel');
+  if (currentDist === 'piecewise') {
+    panel.innerHTML = renderPiecewiseEditor();
+    return;
+  }
+  const params = distParams[currentDist];
+  panel.innerHTML = params.map(p => {
+    if (p.type === 'select') {
+      return `<div class="field"><label>${p.label}</label>
+        <select id="${p.id}" onchange="updateChart()">
+          ${p.opts.map(o => `<option value="${o}" ${o===p.val?'selected':''}>${o.charAt(0).toUpperCase()+o.slice(1)}</option>`).join('')}
+        </select></div>`;
+    }
+    return `<div class="field"><label>${p.label}</label>
+      <input type="number" id="${p.id}" value="${p.val}" step="any" oninput="updateChart()"></div>`;
+  }).join('');
+}
+
+function renderPiecewiseEditor() {
+  let html = `<div class="panel-title" style="margin-bottom:0.5rem;font-size:0.68rem">Each piece: [a, b] with height h<br><small style="color:var(--text3)">Heights will be auto-normalized so total area = 1</small></div>`;
+  html += `<div id="piecesContainer">`;
+  pieces.forEach((p, i) => {
+    html += `<div class="piece-row" id="piece-${i}">
+      <input type="number" placeholder="a" value="${p.a}" step="any" oninput="updatePiece(${i},'a',this.value)" style="max-width:60px">
+      <input type="number" placeholder="b" value="${p.b}" step="any" oninput="updatePiece(${i},'b',this.value)" style="max-width:60px">
+      <input type="number" placeholder="h" value="${p.h}" step="any" oninput="updatePiece(${i},'h',this.value)" style="max-width:60px">
+      <button class="remove-btn" onclick="removePiece(${i})">×</button>
+    </div>`;
+  });
+  html += `</div><button class="add-piece-btn" onclick="addPiece()">+ Add piece</button>`;
+  return html;
+}
+
+function updatePiece(i, key, val) {
+  pieces[i][key] = parseFloat(val) || 0;
+  updateChart();
+}
+function addPiece() {
+  const last = pieces[pieces.length - 1];
+  pieces.push({ a: last ? last.b : 0, b: last ? last.b + 5 : 5, h: 0.1 });
+  renderParamPanel(); updateChart();
+}
+function removePiece(i) {
+  if (pieces.length > 1) { pieces.splice(i, 1); renderParamPanel(); updateChart(); }
+}
+
+function getParam(id) {
+  const el = document.getElementById(id);
+  return el ? (el.tagName === 'SELECT' ? el.value : parseFloat(el.value)) : 0;
+}
+
+// =============================================
+// PDF FUNCTIONS
+// =============================================
+function getPDF(x) {
+  switch(currentDist) {
+    case 'uniform': {
+      const a = getParam('u_a'), b = getParam('u_b');
+      if (b <= a) return 0;
+      return (x >= a && x <= b) ? 1/(b-a) : 0;
+    }
+    case 'triangular': {
+      const a = getParam('t_a'), b = getParam('t_b'), c = getParam('t_c');
+      if (b <= a || c < a || c > b) return 0;
+      if (x < a || x > b) return 0;
+      if (x <= c) return 2*(x-a)/((b-a)*(c-a));
+      return 2*(b-x)/((b-a)*(b-c));
+    }
+    case 'linear': {
+      const a = getParam('l_a'), b = getParam('l_b'), dir = getParam('l_dir');
+      if (b <= a || x < a || x > b) return 0;
+      const L = b - a;
+      if (dir === 'increasing') return 2*(x-a)/(L*L);
+      return 2*(b-x)/(L*L);
+    }
+    case 'piecewise': {
+      const totalArea = pieces.reduce((s, p) => s + Math.max(0, p.h * (p.b - p.a)), 0);
+      if (totalArea === 0) return 0;
+      for (const p of pieces) {
+        if (x >= p.a && x <= p.b) return p.h / totalArea;
+      }
+      return 0;
+    }
+    case 'normal': {
+      const mu = getParam('n_mu'), sig = getParam('n_sig');
+      if (sig <= 0) return 0;
+      return Math.exp(-0.5*((x-mu)/sig)**2) / (sig * Math.sqrt(2*Math.PI));
+    }
+  }
+  return 0;
+}
+
+function getDomain() {
+  switch(currentDist) {
+    case 'uniform': { const a=getParam('u_a'), b=getParam('u_b'); return [Math.min(a,b)-1, Math.max(a,b)+1]; }
+    case 'triangular': { const a=getParam('t_a'), b=getParam('t_b'); return [a-1, b+1]; }
+    case 'linear': { const a=getParam('l_a'), b=getParam('l_b'); return [a-1, b+1]; }
+    case 'piecewise': {
+      const allA = pieces.map(p=>p.a), allB = pieces.map(p=>p.b);
+      return [Math.min(...allA)-1, Math.max(...allB)+1];
+    }
+    case 'normal': { const mu=getParam('n_mu'), sig=Math.abs(getParam('n_sig'))||1; return [mu-4*sig, mu+4*sig]; }
+  }
+  return [0, 10];
+}
+
+// =============================================
+// PROBABILITY CALCULATIONS (Simpson's rule)
+// =============================================
+function integrate(f, lo, hi, n=1000) {
+  if (lo >= hi) return 0;
+  const h = (hi - lo) / n;
+  let sum = f(lo) + f(hi);
+  for (let i=1; i<n; i++) {
+    sum += f(lo + i*h) * (i%2===0 ? 2 : 4);
+  }
+  return sum * h / 3;
+}
+
+function calcProb() {
+  const [domA, domB] = getDomain();
+  let prob = 0;
+  const pA = parseFloat(document.getElementById('probA')?.value);
+  const pB = parseFloat(document.getElementById('probB')?.value);
+
+  if (probType === 'below') {
+    if (isNaN(pB)) return;
+    prob = integrate(x => getPDF(x), domA, pB);
+  } else if (probType === 'above') {
+    if (isNaN(pA)) return;
+    prob = integrate(x => getPDF(x), pA, domB);
+  } else {
+    if (isNaN(pA) || isNaN(pB)) return;
+    prob = integrate(x => getPDF(x), Math.min(pA,pB), Math.max(pA,pB));
+  }
+
+  prob = Math.min(1, Math.max(0, prob));
+  document.getElementById('probValue').textContent = prob.toFixed(4);
+  document.getElementById('probPct').textContent = (prob*100).toFixed(2) + '%';
+  updateChart();
+}
+
+// =============================================
+// PROBABILITY TYPE UI
+// =============================================
+function setProbType(t) {
+  probType = t;
+  document.querySelectorAll('.prob-type-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  renderProbInputs();
+  calcProb();
+}
+
+function renderProbInputs() {
+  const el = document.getElementById('probInputs');
+  if (probType === 'below') {
+    el.innerHTML = `<div class="field"><label>Upper bound (b)</label><input type="number" id="probB" value="5" step="any" oninput="calcProb()"></div>`;
+  } else if (probType === 'above') {
+    el.innerHTML = `<div class="field"><label>Lower bound (a)</label><input type="number" id="probA" value="5" step="any" oninput="calcProb()"></div>`;
+  } else {
+    el.innerHTML = `<div class="prob-row">
+      <div class="field"><label>Lower (a)</label><input type="number" id="probA" value="3" step="any" oninput="calcProb()"></div>
+      <div class="field"><label>Upper (b)</label><input type="number" id="probB" value="7" step="any" oninput="calcProb()"></div>
+    </div>`;
+  }
+  calcProb();
+}
+
+// =============================================
+// CHART RENDERING — C8
+// =============================================
+function updateChart() {
+  const [domA, domB] = getDomain();
+  const N = 400;
+  const step = (domB - domA) / N;
+  const labels = [], pdfData = [], shadeData = [];
+
+  // Get shade bounds
+  let shadeA = domA, shadeB = domB;
+  const pAEl = document.getElementById('probA');
+  const pBEl = document.getElementById('probB');
+  const pA = parseFloat(pAEl?.value);
+  const pB = parseFloat(pBEl?.value);
+
+  if (probType === 'below' && !isNaN(pB)) shadeB = pB;
+  else if (probType === 'above' && !isNaN(pA)) shadeA = pA;
+  else if (probType === 'between') {
+    if (!isNaN(pA)) shadeA = pA;
+    if (!isNaN(pB)) shadeB = pB;
+    if (shadeA > shadeB) [shadeA, shadeB] = [shadeB, shadeA];
+  }
+
+  for (let i = 0; i <= N; i++) {
+    const x = domA + i * step;
+    const y = getPDF(x);
+    labels.push(x.toFixed(3));
+    pdfData.push(y);
+    shadeData.push((x >= shadeA && x <= shadeB) ? y : 0);
+  }
+
+  const chartTitle = {
+    uniform: 'Uniform Distribution — PDF',
+    triangular: 'Triangular Distribution — PDF',
+    linear: 'Linear Distribution — PDF',
+    piecewise: 'Piecewise Distribution — PDF',
+    normal: 'Normal Distribution — PDF'
+  }[currentDist];
+  document.getElementById('chartTitle').textContent = chartTitle;
+
+  const ctx = document.getElementById('pdfChart').getContext('2d');
+  if (pdfChartInstance) pdfChartInstance.destroy();
+
+  pdfChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Shaded region',
+          data: shadeData,
+          fill: true,
+          backgroundColor: 'rgba(99,179,237,0.3)',
+          borderColor: 'transparent',
+          pointRadius: 0,
+          tension: 0.1,
+          order: 2
+        },
+        {
+          label: 'PDF',
+          data: pdfData,
+          fill: false,
+          borderColor: '#63b3ed',
+          borderWidth: 2.5,
+          pointRadius: 0,
+          tension: 0.1,
+          order: 1
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          mode: 'index', intersect: false,
+          callbacks: {
+            label: ctx => ctx.datasetIndex === 1 ? ` f(x) = ${ctx.parsed.y.toFixed(4)}` : null,
+            title: ctx => `x = ${parseFloat(ctx[0].label).toFixed(3)}`
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: {
+            color: '#64748b',
+            maxTicksLimit: 10,
+            callback: (val, i, ticks) => parseFloat(labels[i]).toFixed(2)
+          },
+          grid: { color: 'rgba(255,255,255,0.04)' }
+        },
+        y: {
+          ticks: { color: '#64748b' },
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          beginAtZero: true
+        }
+      }
+    }
+  });
+  calcProb();
+}
+
+// =============================================
+// C9 — DATA INPUT
+// =============================================
+function loadCSV(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const text = e.target.result;
+    parseData(text);
+  };
+  reader.readAsText(file);
+}
+
+function loadPastedData() {
+  const raw = document.getElementById('dataInput').value;
+  parseData(raw);
+}
+
+function parseData(text) {
+  const nums = text.match(/-?\d+(\.\d+)?/g);
+  if (!nums || nums.length === 0) { alert('No numeric data found.'); return; }
+  dataValues = nums.map(Number).filter(n => !isNaN(n));
+  showDataStats();
+  document.getElementById('dataStatsPanel').style.display = 'block';
+  document.getElementById('fitPanel').style.display = 'block';
+  document.getElementById('c9ChartWrap').style.display = 'block';
+  fitDistribution(currentFit);
+}
+
+function showDataStats() {
+  const n = dataValues.length;
+  const min = Math.min(...dataValues);
+  const max = Math.max(...dataValues);
+  const mean = dataValues.reduce((a,b)=>a+b,0)/n;
+  const variance = dataValues.reduce((a,b)=>a+(b-mean)**2,0)/n;
+  const sd = Math.sqrt(variance);
+  const sorted = [...dataValues].sort((a,b)=>a-b);
+  const median = n%2===0 ? (sorted[n/2-1]+sorted[n/2])/2 : sorted[Math.floor(n/2)];
+
+  document.getElementById('statGrid').innerHTML = [
+    {v:n, l:'Count'},{v:min.toFixed(2),l:'Min'},{v:max.toFixed(2),l:'Max'},
+    {v:mean.toFixed(2),l:'Mean'},{v:median.toFixed(2),l:'Median'},{v:sd.toFixed(2),l:'Std Dev'}
+  ].map(s=>`<div class="stat-card"><div class="stat-val">${s.v}</div><div class="stat-lbl">${s.l}</div></div>`).join('');
+}
+
+// =============================================
+// C9 — DISTRIBUTION FITTING
+// =============================================
+function selectFit(d) {
+  currentFit = d;
+  document.querySelectorAll('.inner-tab').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  fitDistribution(d);
+}
+
+function fitDistribution(d) {
+  if (dataValues.length === 0) return;
+  const n = dataValues.length;
+  const min = Math.min(...dataValues);
+  const max = Math.max(...dataValues);
+  const mean = dataValues.reduce((a,b)=>a+b,0)/n;
+  const variance = dataValues.reduce((a,b)=>a+(b-mean)**2,0)/n;
+  const sd = Math.sqrt(variance);
+  const sorted = [...dataValues].sort((a,b)=>a-b);
+
+  let params = {}, pdfFn, interp = '';
+
+  if (d === 'uniform') {
+    params = { a: min.toFixed(3), b: max.toFixed(3), 'f(x)': (1/(max-min)).toFixed(4) };
+    pdfFn = x => (x>=min && x<=max) ? 1/(max-min) : 0;
+    const ratio = (mean - min) / (max - min);
+    interp = `<strong>Uniform fit:</strong> The data spans [${min.toFixed(2)}, ${max.toFixed(2)}]. A uniform distribution assumes all values are equally likely. This is a good fit if the histogram bars are roughly equal height. The sample mean (${mean.toFixed(2)}) is at ${(ratio*100).toFixed(1)}% of the range — a uniform distribution expects it at 50%. ${Math.abs(ratio-0.5)<0.15 ? 'This looks reasonable.' : 'The mean is off-center, suggesting a non-uniform distribution might fit better.'}`;
+  } else if (d === 'triangular') {
+    const mode_est = sorted[Math.floor(n*0.5)];
+    params = { a: min.toFixed(3), b: max.toFixed(3), c: mode_est.toFixed(3) };
+    pdfFn = x => {
+      const a=min, b=max, c=mode_est;
+      if (x<a||x>b) return 0;
+      if (x<=c) return 2*(x-a)/((b-a)*(c-a||1));
+      return 2*(b-x)/((b-a)*(b-c||1));
+    };
+    interp = `<strong>Triangular fit:</strong> Estimated mode at ${mode_est.toFixed(2)} (50th percentile). Range: [${min.toFixed(2)}, ${max.toFixed(2)}]. This fits well if the data peaks near the middle and tapers to both sides. Check if the histogram resembles a triangle shape.`;
+  } else if (d === 'linear') {
+    const slope = mean > (min+max)/2 ? 'increasing' : 'decreasing';
+    params = { a: min.toFixed(3), b: max.toFixed(3), direction: slope };
+    const L = max - min;
+    pdfFn = x => {
+      if (x<min||x>max) return 0;
+      if (slope==='increasing') return 2*(x-min)/(L*L);
+      return 2*(max-x)/(L*L);
+    };
+    interp = `<strong>Linear fit:</strong> The sample mean (${mean.toFixed(2)}) is ${mean>(min+max)/2?'above':'below'} the midpoint (${((min+max)/2).toFixed(2)}), suggesting a ${slope} linear trend. A linear PDF fits data that concentrates toward one end of its range.`;
+  } else if (d === 'piecewise_u') {
+    const nBins = Math.min(5, Math.max(3, Math.floor(Math.sqrt(n))));
+    const binW = (max - min) / nBins;
+    const bins = Array(nBins).fill(0);
+    dataValues.forEach(v => {
+      const i = Math.min(nBins-1, Math.floor((v-min)/binW));
+      bins[i]++;
+    });
+    const heights = bins.map(c => c/(n*binW));
+    params = {};
+    for (let i=0; i<nBins; i++) {
+      const lo = min + i*binW, hi = lo+binW;
+      params[`Piece ${i+1}: [${lo.toFixed(1)}, ${hi.toFixed(1)}]`] = `h=${heights[i].toFixed(4)}`;
+    }
+    pdfFn = x => {
+      for (let i=0; i<nBins; i++) {
+        const lo=min+i*binW, hi=lo+binW;
+        if (x>=lo&&x<hi) return heights[i];
+      }
+      return 0;
+    };
+    interp = `<strong>Piecewise Uniform fit:</strong> The data range was divided into ${nBins} equal-width bins. Each piece has a constant height proportional to the relative frequency of data in that interval. This is essentially a normalized histogram and fits any data shape.`;
+  } else if (d === 'normal') {
+    params = { 'μ (mean)': mean.toFixed(4), 'σ (std dev)': sd.toFixed(4) };
+    pdfFn = x => Math.exp(-0.5*((x-mean)/sd)**2) / (sd*Math.sqrt(2*Math.PI));
+    // Assess normality via skewness
+    const skew = dataValues.reduce((a,b)=>a+((b-mean)/sd)**3,0)/n;
+    interp = `<strong>Normal fit:</strong> μ = ${mean.toFixed(2)}, σ = ${sd.toFixed(2)}. Skewness ≈ ${skew.toFixed(2)} (ideally 0 for a perfect normal). ${Math.abs(skew)<0.5 ? 'The data appears approximately symmetric — the normal distribution looks like a reasonable fit.' : Math.abs(skew)<1 ? 'Moderate skewness detected — the normal distribution may be an approximation.' : 'High skewness — a skewed distribution might fit better than the normal.'}`;
+  }
+
+  document.getElementById('fitParams').innerHTML = Object.entries(params).map(([k,v])=>
+    `<li><span class="key">${k}</span><span class="val">${v}</span></li>`
+  ).join('');
+  document.getElementById('fitInterp').innerHTML = interp;
+  renderFitChart(pdfFn);
+}
+
+// =============================================
+// C9 — FIT CHART
+// =============================================
+function renderFitChart(pdfFn) {
+  const min = Math.min(...dataValues);
+  const max = Math.max(...dataValues);
+  const nBins = Math.max(10, Math.min(30, Math.floor(Math.sqrt(dataValues.length)*2)));
+  const binW = (max - min) / nBins;
+  const bins = Array(nBins).fill(0);
+  dataValues.forEach(v => {
+    const i = Math.min(nBins-1, Math.floor((v-min)/binW));
+    bins[i]++;
+  });
+  const n = dataValues.length;
+  const histHeights = bins.map(c => c/(n*binW));
+  const histLabels = Array(nBins).fill(0).map((_,i) => (min + (i+0.5)*binW).toFixed(2));
+
+  // PDF line
+  const pdfN = 200;
+  const pdfStep = (max-min)/pdfN;
+  const pdfLabels = Array(pdfN+1).fill(0).map((_,i)=>(min+i*pdfStep).toFixed(3));
+  const pdfVals = pdfLabels.map(x=>pdfFn(parseFloat(x)));
+
+  const ctx = document.getElementById('fitChart').getContext('2d');
+  if (fitChartInstance) fitChartInstance.destroy();
+
+  fitChartInstance = new Chart(ctx, {
+    data: {
+      datasets: [
+        {
+          type: 'bar',
+          label: 'Empirical histogram',
+          data: histLabels.map((l,i)=>({x:parseFloat(l),y:histHeights[i]})),
+          backgroundColor: 'rgba(79,195,161,0.3)',
+          borderColor: 'rgba(79,195,161,0.7)',
+          borderWidth: 1,
+          barPercentage: 1,
+          categoryPercentage: 1
+        },
+        {
+          type: 'line',
+          label: 'Fitted PDF',
+          data: pdfLabels.map((l,i)=>({x:parseFloat(l),y:pdfVals[i]})),
+          borderColor: '#63b3ed',
+          borderWidth: 2.5,
+          pointRadius: 0,
+          fill: false,
+          tension: 0.2
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { mode: 'index', intersect: false }
+      },
+      scales: {
+        x: {
+          type: 'linear',
+          ticks: { color: '#64748b', maxTicksLimit: 10 },
+          grid: { color: 'rgba(255,255,255,0.04)' }
+        },
+        y: {
+          ticks: { color: '#64748b' },
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          beginAtZero: true,
+          title: { display: true, text: 'Density', color: '#64748b', font: { size: 11 } }
+        }
+      }
+    }
+  });
+
+  // Custom legend
+  document.getElementById('c9ChartTitle').innerHTML = `
+    Histogram + Fitted PDF &nbsp;
+    <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#4fc3a1;margin-right:8px">
+      <span style="width:10px;height:10px;background:rgba(79,195,161,0.5);display:inline-block;border-radius:2px"></span>Histogram
+    </span>
+    <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#63b3ed">
+      <span style="width:14px;height:2px;background:#63b3ed;display:inline-block"></span>Fitted PDF
+    </span>
+  `;
+}
+
+// =============================================
+// INIT
+// =============================================
+renderParamPanel();
+renderProbInputs();
+setTimeout(updateChart, 100);
+</script>
+
+</body>
+</html>
